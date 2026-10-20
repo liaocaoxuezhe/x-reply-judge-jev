@@ -19,6 +19,13 @@ async function loadSettings() {
   const { [SETTINGS_KEY]: saved = {}, [API_KEY_KEY]: apiKey = "" } =
     await chrome.storage.local.get([SETTINGS_KEY, API_KEY_KEY]);
   const merged = { ...DEFAULT_SETTINGS, ...saved, apiKey };
+  // Upgrade only known shipped defaults. User-authored prompts must survive updates.
+  if (saved.instructions && [
+    JevApi.LEGACY_AI_INSTRUCTIONS, JevApi.PREVIOUS_AI_INSTRUCTIONS,
+    JevApi.PREVIOUS_SLOP_INSTRUCTIONS, JevApi.PREVIOUS_PRINCIPLE_INSTRUCTIONS
+  ].includes(saved.instructions)) {
+    merged.instructions = DEFAULT_SETTINGS.instructions;
+  }
   // Migrate the old "auto-scan own posts only" toggle into triggerMode.
   if (saved.triggerMode == null && typeof saved.autoScanOwn === "boolean") {
     merged.triggerMode = saved.autoScanOwn ? "auto" : "manual";

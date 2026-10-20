@@ -39,7 +39,11 @@ async function analyzeItems(items, mode) {
   const cached = [];
   const misses = [];
   for (const item of items) {
-    if (cache[item.id]) cached.push({ id: item.id, probability: cache[item.id].probability });
+    // Local short-text rule wins over old cached scores and never enters the API batch.
+    // Count Unicode code points, ignoring whitespace (including line breaks).
+    if (Array.from(item.text.replace(/\s/gu, "")).length <= 10) {
+      cached.push({ id: item.id, probability: 20 });
+    } else if (cache[item.id]) cached.push({ id: item.id, probability: cache[item.id].probability });
     else misses.push(item);
   }
   if (mode === "lookup" || !misses.length) return { ok: true, results: cached, batchIds: [] };

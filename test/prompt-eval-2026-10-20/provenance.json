@@ -1,0 +1,8 @@
+{
+  "url": "https://www.modelscope.cn/api/v1/datasets/simpleai/HC3-Chinese/repo?Revision=master&FilePath=open_qa.jsonl",
+  "sha256": "ccac1bec153b57646ace3dbd4fdb677e7d66a789127119ffeab9ac56aa01df83",
+  "seed": 20261020,
+  "eligible_pairs": 1289,
+  "selection": "40–350 characters per answer, length ratio <= 2, exclude explicit AI self-identification; first 24 shuffled pairs; first 12 dev, next 12 holdout; texts unchanged",
+  "limitations": "2023 Q&A corpus, not modern X replies; labels are dataset annotations, not independently verified."
+}

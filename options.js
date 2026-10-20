@@ -1,4 +1,5 @@
-const API_FIELDS = ["baseUrl", "path", "authHeader", "authScheme", "model", "questionKey", "responsePath", "instructions"];
+const API_FIELDS = ["baseUrl", "path", "authHeader", "authScheme", "model", "questionKey", "responsePath"];
+const TEXT_FIELDS = [...API_FIELDS, "instructions"];
 const NUMBER_FIELDS = ["concurrency", "maxReplies", "dailyAutoLimit"];
 const DEFAULT_ORIGIN = "https://api.typesafe.ai/*";
 const $ = (id) => document.getElementById(id);
@@ -11,7 +12,7 @@ function setStatus(text, kind = "") {
 async function render() {
   const settings = await loadSettings();
   $("apiKey").value = settings.apiKey;
-  for (const field of [...API_FIELDS, ...NUMBER_FIELDS]) $(field).value = settings[field];
+  for (const field of [...TEXT_FIELDS, ...NUMBER_FIELDS]) $(field).value = settings[field];
   const mode = settings.triggerMode === "manual" ? "manual" : "auto";
   $("triggerModeAuto").checked = mode === "auto";
   $("triggerModeManual").checked = mode === "manual";
@@ -25,8 +26,8 @@ function clampInt(value, min, max, fallback) {
 
 function readForm() {
   const settings = {};
-  for (const field of API_FIELDS) settings[field] = $(field).value.trim();
-  for (const field of API_FIELDS) {
+  for (const field of TEXT_FIELDS) settings[field] = $(field).value.trim();
+  for (const field of TEXT_FIELDS) {
     if (!settings[field] && field !== "authScheme") settings[field] = DEFAULT_SETTINGS[field];
   }
   settings.concurrency = clampInt($("concurrency").value, 1, 16, DEFAULT_SETTINGS.concurrency);
@@ -42,9 +43,12 @@ async function save() {
     setStatus("Base URL must be a valid http(s) URL.", "err");
     return false;
   }
+  const previous = await loadSettings();
+  const promptChanged = settings.instructions !== previous.instructions;
   await chrome.storage.local.set({ settings, apiKey: $("apiKey").value.trim() });
+  if (promptChanged) await clearScoreCache();
   await render();
-  setStatus("Saved.", "ok");
+  setStatus(promptChanged ? "Saved. Prompt updated and old scores cleared. Reload X to scan again." : "Saved.", "ok");
   return true;
 }
 
@@ -78,6 +82,11 @@ $("clearCache").addEventListener("click", async () => {
 $("reset").addEventListener("click", () => {
   for (const field of API_FIELDS) $(field).value = DEFAULT_SETTINGS[field];
   setStatus("Endpoint defaults restored. Click Save to keep them.");
+});
+
+$("resetPrompt").addEventListener("click", () => {
+  $("instructions").value = DEFAULT_SETTINGS.instructions;
+  setStatus("Default prompt restored. Click Save to apply it.");
 });
 
 render();
