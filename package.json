@@ -4,7 +4,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "check": "for f in *.js tests/*.js; do node --check \"$f\" || exit 1; done && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8'))\"",
-    "test": "node --test tests/*.test.js"
+    "check": "for f in *.js tests/*.js test/*.js test/prompt-eval-2026-10-20/*.js; do node --check \"$f\" || exit 1; done && node -e \"JSON.parse(require('fs').readFileSync('manifest.json','utf8'))\"",
+    "test": "node --test tests/*.test.js test/*.test.js"
   }
 }

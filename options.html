@@ -12,7 +12,7 @@
     label { display: block; margin-top: 14px; font-weight: 600; }
     label.inline { font-weight: 400; display: flex; gap: 8px; align-items: center; }
     input[type=text], input[type=password], input[type=number], textarea { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 8px 10px; border: 1px solid #cfd9de; border-radius: 8px; font: inherit; }
-    textarea { min-height: 70px; }
+    textarea { min-height: 260px; resize: vertical; }
     button { margin-top: 20px; margin-right: 8px; padding: 8px 16px; border: 0; border-radius: 999px; background: #1d9bf0; color: #fff; font-weight: 700; cursor: pointer; }
     button.secondary { background: #eff3f4; color: #0f1419; }
     #status { margin-top: 12px; white-space: pre-wrap; }
@@ -28,7 +28,14 @@
   <input id="apiKey" type="password" autocomplete="off" placeholder="Paste your key">
   <small>Stored only in chrome.storage.local on this device. Create one at <a href="https://console.typesafe.ai" target="_blank" rel="noreferrer">console.typesafe.ai</a>.</small>
 
+  <h2>Detection prompt</h2>
+  <label for="instructions">AI reply judgment instructions</label>
+  <textarea id="instructions" rows="12" aria-describedby="promptHint" spellcheck="false"></textarea>
+  <small id="promptHint">Edit the rules sent to the model. Chinese and English are supported. Click Save to apply. Saving a changed prompt clears old scores; reload X to scan again.</small>
+  <button id="resetPrompt" class="secondary" type="button">Restore default prompt</button>
+
   <h2>Scanning</h2>
+  <small>Comments with 10 or fewer non-whitespace characters show a fixed 20% without calling the model or using the auto-scan quota.</small>
   <label>Trigger mode</label>
   <label class="inline"><input id="triggerModeAuto" name="triggerMode" type="radio" value="auto"> Auto — scan the home feed and post detail pages when you open them</label>
   <label class="inline"><input id="triggerModeManual" name="triggerMode" type="radio" value="manual"> Manual — only when you click Scan or the toolbar icon</label>
@@ -58,8 +65,6 @@
     <input id="questionKey" type="text">
     <label for="responsePath">Response field path ({q} = question key)</label>
     <input id="responsePath" type="text">
-    <label for="instructions">Question instructions (English)</label>
-    <textarea id="instructions"></textarea>
     <button id="reset" class="secondary" type="button">Reset endpoint defaults</button>
   </details>
 

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>Jev Prompt 对比测试</title>
+<style>body{max-width:1000px;margin:30px auto;font:16px/1.6 sans-serif}button,select{padding:10px;margin:8px}pre{white-space:pre-wrap}textarea{width:100%;height:250px}</style>
+<h1>Jev Prompt 对比测试</h1>
+<p>使用此扩展已保存的 TypeSafe 配置。只发送公开测试文本；报告不包含密钥。运行对比不修改设置、缓存或每日扫描计数。</p>
+<p id="config">正在读取配置</p>
+<p id="activePrompt"></p>
+<label>测试集 <select id="split"><option value="dev">开发集（24 条）</option><option value="holdout">留出集（24 条）</option><option value="stress">短回复补充集</option></select></label>
+<button id="run">运行对比</button><button id="download" disabled>下载结果</button>
+<button id="apply">应用已验证的 contrast Prompt 并清除旧评分缓存</button>
+<p><a href="../../options.html" target="_blank">打开设置页核对</a></p>
+<pre id="status" role="status">就绪</pre>
+<pre id="summary"></pre>
+<textarea id="output" aria-label="测试结果" readonly></textarea>
+<script src="../../api.js"></script><script src="../../store.js"></script>
+<script src="data.js"></script><script src="runner.js"></script>
+</html>
