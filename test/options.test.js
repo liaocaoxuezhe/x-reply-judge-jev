@@ -14,7 +14,7 @@ async function optionsPage() {
   const context = vm.createContext({
     URL,
     document: { getElementById: (id) => fields[id] },
-    chrome: { storage: { local: {
+    chrome: { permissions: { request: async () => true }, storage: { local: {
       get: async () => ({ ...stored }),
       set: async (values) => { stored = { ...stored, ...values }; },
       remove: async (key) => { delete stored[key]; }
@@ -59,4 +59,38 @@ test("prompt reset leaves endpoint edits intact until Save", async () => {
   assert.equal(page.fields.instructions.value, page.context.JevApi.DEFAULT_API_SETTINGS.instructions);
   assert.equal(page.fields.baseUrl.value, "https://example.com");
   assert.equal(page.stored().settings.instructions, "我的自定义判断规则");
+});
+
+test('switching provider clears Jev scores and keeps both provider credentials', async () => {
+  const page = await optionsPage();
+  page.fields.provider.value = 'cloudflare';
+  page.fields.cloudflareAccountId.value = 'a'.repeat(32);
+  page.fields.cloudflareApiKey.value = 'cf-key';
+  page.fields.clefModel.value = '@cf/cloudflare/clef';
+  await page.fields.save.handlers.click();
+  assert.equal(page.stored().settings.provider, 'cloudflare');
+  assert.equal(page.stored().apiKey, 'existing-key');
+  assert.equal(page.stored().cloudflareApiKey, 'cf-key');
+  assert.equal(page.stored().scoreCache, undefined);
+});
+
+test('changing Jev model invalidates previous scores', async () => {
+  const page = await optionsPage();
+  page.fields.model.value = 'jev-preview';
+  await page.fields.save.handlers.click();
+  assert.equal(page.stored().scoreCache, undefined);
+});
+
+test('changing Clef to Flash clears its cached scores and preserves credentials', async () => {
+  const page = await optionsPage();
+  page.fields.provider.value = 'cloudflare';
+  page.fields.cloudflareAccountId.value = 'b'.repeat(32);
+  page.fields.cloudflareApiKey.value = 'cf-key';
+  await page.fields.save.handlers.click();
+  await page.context.chrome.storage.local.set({ scoreCache: { tweet: { probability: 72, savedAt: Date.now() } } });
+  page.fields.clefModel.value = '@cf/cloudflare/clef-flash';
+  await page.fields.save.handlers.click();
+  assert.equal(page.stored().settings.clefModel, '@cf/cloudflare/clef-flash');
+  assert.equal(page.stored().cloudflareApiKey, 'cf-key');
+  assert.equal(page.stored().scoreCache, undefined);
 });

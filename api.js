@@ -1,4 +1,4 @@
-// TypeSafe Jev API layer. Everything that knows about the wire format lives here.
+// TypeSafe Jev and Cloudflare Clef API layer.
 // Verified against https://docs.typesafe.ai/api/system-one.md (OpenAPI for POST /v1/systemone).
 // Works both as a classic script (importScripts in the service worker) and as a CommonJS module (tests).
 
@@ -38,7 +38,7 @@
   // Request body: ONLY the reply text goes into `state`. No author, ids, timestamps or parent post.
   function buildRequestBody(text, cfg) {
     return {
-      model: cfg.model,
+      model: cfg.provider === "cloudflare" ? clefModel(cfg).split("/").pop() : cfg.model,
       state: String(text),
       questions: {
         [cfg.questionKey]: { type: "noul", instructions: cfg.instructions }
@@ -48,6 +48,7 @@
 
   function buildHeaders(apiKey, cfg) {
     const headers = { "Content-Type": "application/json" };
+    if (cfg.provider === "cloudflare") return { ...headers, Authorization: `Bearer ${apiKey}` };
     if (cfg.authHeader) {
       headers[cfg.authHeader] = cfg.authScheme ? `${cfg.authScheme} ${apiKey}` : apiKey;
     }
@@ -55,9 +56,23 @@
   }
 
   function buildUrl(cfg) {
+    if (cfg.provider === "cloudflare") {
+      if (!/^[a-f0-9]{32}$/i.test(cfg.cloudflareAccountId || "")) throw new Error("Cloudflare account ID must be 32 hexadecimal characters.");
+      return `https://api.cloudflare.com/client/v4/accounts/${cfg.cloudflareAccountId}/ai/run/${clefModel(cfg)}`;
+    }
     const base = String(cfg.baseUrl || "").replace(/\/+$/, "");
     const path = String(cfg.path || "");
     return base + (path.startsWith("/") ? path : `/${path}`);
+  }
+
+  function clefModel(cfg) {
+    const model = cfg.clefModel || "@cf/cloudflare/clef";
+    if (!["@cf/cloudflare/clef", "@cf/cloudflare/clef-flash"].includes(model)) throw new Error("Unsupported Clef model.");
+    return model;
+  }
+
+  function effectiveBaseUrl(cfg) {
+    return cfg.provider === "cloudflare" ? "https://api.cloudflare.com" : cfg.baseUrl;
   }
 
   function getPath(obj, path) {
@@ -99,6 +114,7 @@
 
   // Detect one reply text. Retries 429/529 with exponential backoff, honouring Retry-After.
   async function detectText(text, apiKey, cfg, options = {}) {
+    const url = buildUrl(cfg);
     const fetchFn = options.fetch || root.fetch.bind(root);
     const sleep = options.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
     const maxRetries = options.maxRetries ?? 3;
@@ -109,7 +125,7 @@
       const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
       let response;
       try {
-        response = await fetchFn(buildUrl(cfg), {
+        response = await fetchFn(url, {
           method: "POST",
           headers: buildHeaders(apiKey, cfg),
           body: JSON.stringify(buildRequestBody(text, cfg)),
@@ -123,7 +139,12 @@
 
       if (response.ok) {
         const json = await response.json();
-        return { probability: parseProbability(json, cfg), model: json?.model || null };
+        if (cfg.provider === "cloudflare" && json.success === false) {
+          throw new Error(`Cloudflare: ${json.errors?.map((e) => e.message).join("; ") || "Request failed"}`);
+        }
+        const result = cfg.provider === "cloudflare" ? json.result : json;
+        const responseCfg = cfg.provider === "cloudflare" ? { ...cfg, responsePath: "answers.{q}.noul" } : cfg;
+        return { probability: parseProbability(result, responseCfg), model: result?.model || (cfg.provider === "cloudflare" ? clefModel(cfg) : null) };
       }
 
       if (RETRYABLE.has(response.status) && attempt < maxRetries) {
@@ -169,7 +190,7 @@
   }
 
   const api = {
-    DEFAULT_API_SETTINGS, LEGACY_AI_INSTRUCTIONS, PREVIOUS_AI_INSTRUCTIONS, PREVIOUS_SLOP_INSTRUCTIONS, PREVIOUS_PRINCIPLE_INSTRUCTIONS, buildRequestBody, buildHeaders, buildUrl, getPath,
+    DEFAULT_API_SETTINGS, LEGACY_AI_INSTRUCTIONS, PREVIOUS_AI_INSTRUCTIONS, PREVIOUS_SLOP_INSTRUCTIONS, PREVIOUS_PRINCIPLE_INSTRUCTIONS, buildRequestBody, buildHeaders, buildUrl, effectiveBaseUrl, getPath,
     parseProbability, describeHttpError, detectText, mapWithConcurrency, originPattern
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

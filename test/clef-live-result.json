@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-21T06:49:00.061Z",
+  "results": [
+    {
+      "requestedModel": "@cf/cloudflare/clef",
+      "probability": 88,
+      "model": "clef",
+      "ms": 1914
+    },
+    {
+      "requestedModel": "@cf/cloudflare/clef-flash",
+      "probability": 46,
+      "model": "clef-flash",
+      "ms": 451
+    }
+  ]
+}

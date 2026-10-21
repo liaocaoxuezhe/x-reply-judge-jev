@@ -20,13 +20,18 @@ async function showBadge(tabId, text, color) {
 
 // Returns a human-readable config problem, or null when ready.
 async function configProblem(settings) {
-  if (!settings.apiKey) return "No API key set. Open the options page to add your TypeSafe key.";
-  const origin = JevApi.originPattern(settings.baseUrl);
+  if (!activeApiKey(settings)) return "No API key set. Open the options page to add the selected provider's key.";
+  try { JevApi.buildUrl(settings); } catch (error) { return error.message; }
+  const origin = JevApi.originPattern(JevApi.effectiveBaseUrl(settings));
   if (!origin) return "API base URL is not a valid http(s) URL.";
   if (origin !== DEFAULT_ORIGIN && !(await chrome.permissions.contains({ origins: [origin] }))) {
     return "Custom API host is not authorized yet. Click \"Test connection\" in options.";
   }
   return null;
+}
+
+function activeApiKey(settings) {
+  return settings.provider === "cloudflare" ? settings.cloudflareApiKey : settings.apiKey;
 }
 
 // mode:
@@ -35,7 +40,9 @@ async function configProblem(settings) {
 // - manual: user clicked the scan button / toolbar icon, no daily limit
 // items: [{ id, text }] - only `text` is ever sent to the API.
 async function analyzeItems(items, mode) {
-  const cache = await loadScoreCache();
+  const settings = await loadSettings();
+  const fingerprint = judgmentFingerprint(settings);
+  const cache = await loadScoreCache(fingerprint);
   const cached = [];
   const misses = [];
   for (const item of items) {
@@ -48,7 +55,6 @@ async function analyzeItems(items, mode) {
   }
   if (mode === "lookup" || !misses.length) return { ok: true, results: cached, batchIds: [] };
 
-  const settings = await loadSettings();
   let batch = misses.slice(0, settings.maxReplies);
 
   if (mode === "auto") {
@@ -65,7 +71,7 @@ async function analyzeItems(items, mode) {
 
   const batchIds = batch.map((item) => item.id);
   const outcomes = await JevApi.mapWithConcurrency(batch, settings.concurrency, (item) =>
-    JevApi.detectText(item.text, settings.apiKey, settings)
+    JevApi.detectText(item.text, activeApiKey(settings), settings)
   );
 
   const fresh = [];
@@ -74,8 +80,11 @@ async function analyzeItems(items, mode) {
     if (outcome.ok) fresh.push({ id: batch[index].id, probability: outcome.value.probability });
     else firstError = firstError || outcome.error;
   });
-  await saveScores(fresh);
   if (mode === "auto") await addAutoCount(batch.length);
+  if (judgmentFingerprint(await loadSettings()) !== fingerprint) {
+    return { ok: true, results: [], batchIds, analyzed: 0, failed: 0, remaining: misses.length, settingsChanged: true };
+  }
+  await saveScores(fresh, fingerprint);
 
   const base = {
     results: [...cached, ...fresh],
@@ -97,7 +106,7 @@ async function testConnection() {
   if (problem) return { ok: false, error: problem };
   const startedAt = Date.now();
   try {
-    const result = await JevApi.detectText("Great insight! Thanks for sharing this valuable perspective.", settings.apiKey, settings, { maxRetries: 0 });
+    const result = await JevApi.detectText("Great insight! Thanks for sharing this valuable perspective.", activeApiKey(settings), settings, { maxRetries: 0 });
     return { ok: true, ms: Date.now() - startedAt, probability: result.probability, model: result.model };
   } catch (error) {
     return { ok: false, error: error.message || "Connection failed" };
