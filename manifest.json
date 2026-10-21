@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "X Reply Judge (Jev)",
-  "version": "0.2.0",
-  "description": "Shows a TypeSafe Jev AI-text probability on X feed posts and replies, with auto/manual scan and click-only hide/block buttons.",
+  "name": "X Reply Judge (Clef / Jev)",
+  "version": "0.3.0",
+  "description": "Compare Cloudflare Clef and TypeSafe Jev judgments on X posts and replies, with configurable models and prompts.",
   "permissions": [
     "activeTab",
     "scripting",
